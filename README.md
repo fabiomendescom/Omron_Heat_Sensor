@@ -15,7 +15,7 @@ Details about the sensor: https://omronfs.omron.com/en_US/ecb/products/pdf/en_D6
 | 3             | D7            |             |
 
 ## How to use run it
-You need an Arduino Uno and an ESP8266
+You need an Arduino Uno and an ESP8266 in addition to an MQTT server
 
 1. Install the library from https://github.com/tzapu/WiFiManager for ESP8266
 2. Install the library from https://github.com/akita11/OmronD6T for Arduino UNO
