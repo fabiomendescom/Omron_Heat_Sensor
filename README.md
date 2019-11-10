@@ -1,5 +1,6 @@
 # Omron Heat Sensor
 This is a combination of Arduino and ESP8266 code to get an Omron Heat Sensor working together
+Details about the sensor: https://omronfs.omron.com/en_US/ecb/products/pdf/en_D6T_users_manual.pdf
 
 ## Hookup
 
