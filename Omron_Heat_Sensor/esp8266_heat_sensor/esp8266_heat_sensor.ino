@@ -1,4 +1,3 @@
-
 /*
  * This sketch must work in conjunction with Arduino_heat_sensor.ino sketch. The Arduino portion below will connect to Omron  D6T-1A-01 and get the 
  * one single temperature. Then it will pass it by Serial port to ESP8266 as a 2 byte short integer. ESP8266 takes value and sends to MQTT message
@@ -12,11 +11,14 @@
 
 //needed for library
 #include <DNSServer.h>
+#include <ESP8266mDNS.h>   
 #include <ESP8266WebServer.h>
 #include <WiFiManager.h>          //https://github.com/tzapu/WiFiManager
 
 #include <ArduinoJson.h>          //https://github.com/bblanchon/ArduinoJson
 #include <PubSubClient.h>
+
+ESP8266WebServer server(80);
 
 int incomingByte;
 
@@ -25,13 +27,38 @@ char mqtt_server[40];
 char mqtt_port[6] = "1883";
 char mqtt_topic[40];
 
+char chipid[40];
+
 SoftwareSerial sw(13, 15, false, 256); // RX, TX
+
+WiFiManager wifiManager;
 
 long count = 0;
 
 //flag for saving data
 bool shouldSaveConfig = false;
 int sensorValue;
+
+void handleReset() {
+  server.send(200, "text/plain", "WIFI settings reset.");   // Send HTTP status 200 (Ok) and send some text to the browser/client
+  delay(3000);
+  wifiManager.resetSettings();
+  delay(3000);
+  //reset and try again, or maybe put it to deep sleep
+  ESP.reset();
+  delay(5000);
+}
+
+void handleHardReset() {
+  server.send(200, "text/plain", "WIFI settings HARD reset.");   // Send HTTP status 200 (Ok) and send some text to the browser/client
+  delay(3000);
+  SPIFFS.format();
+  wifiManager.resetSettings();
+  delay(3000);
+  //reset and try again, or maybe put it to deep sleep
+  ESP.reset();
+  delay(5000);
+}
 
 //callback notifying us of the need to save config
 void saveConfigCallback () {
@@ -43,28 +70,14 @@ WiFiClient espClient;
 PubSubClient client(espClient);
 
 
-void callback(char* topic, byte* payload, unsigned int length) {
- 
-  Serial.print("Message arrived in topic: ");
-  Serial.println(topic);
- 
-  Serial.print("Message:");
-  for (int i = 0; i < length; i++) {
-    Serial.print((char)payload[i]);
-  }
- 
-  Serial.println();
-  Serial.println("-----------------------");
- 
-}
-
-
-void setup() {
-  
+void setup() {  
   // put your setup code here, to run once:
   Serial.begin(115200);
   sw.begin(9600);
   Serial.println();
+
+  String ci = "ESP8266" + String(ESP.getChipId());
+  ci.toCharArray(chipid,40);
 
   //clean FS, for testing. This clears the saved config file
   //SPIFFS.format();
@@ -107,7 +120,6 @@ void setup() {
   //end read
 
 
-
   // The extra parameters to be configured (can be either global or just in the setup)
   // After connecting, parameter.getValue() will get you the configured value
   // id/name placeholder/prompt default length
@@ -115,32 +127,13 @@ void setup() {
   WiFiManagerParameter custom_mqtt_port("port", "mqtt port", mqtt_port, 6);
   WiFiManagerParameter custom_mqtt_topic("topic", "mqtt_topic", mqtt_topic, 40);
 
-  //WiFiManager
-  //Local intialization. Once its business is done, there is no need to keep it around
-  WiFiManager wifiManager;
-
   //set config save notify callback
   wifiManager.setSaveConfigCallback(saveConfigCallback);
-
-  //set static ip
-  //wifiManager.setSTAStaticIPConfig(IPAddress(10,0,1,99), IPAddress(10,0,1,1), IPAddress(255,255,255,0));pi
   
   //add all your parameters here
   wifiManager.addParameter(&custom_mqtt_server);
   wifiManager.addParameter(&custom_mqtt_port);
   wifiManager.addParameter(&custom_mqtt_topic);
-
-  //reset settings - for testing. Use this if you want to clear the WIFI setttings and reconfigure it.
-  //wifiManager.resetSettings();
-
-  //set minimu quality of signal so it ignores AP's under that quality
-  //defaults to 8%
-  //wifiManager.setMinimumSignalQuality();
-  
-  //sets timeout until configuration portal gets turned off
-  //useful to make it all retry or go to sleep
-  //in seconds
-  //wifiManager.setTimeout(120);
 
   //fetches ssid and pass and tries to connect
   //if it does not connect it starts an access point with the specified name
@@ -153,6 +146,10 @@ void setup() {
     ESP.reset();
     delay(5000);
   }
+
+  server.on("/reset", handleReset);
+  server.on("/hardreset", handleHardReset);
+  server.begin(); 
 
   //if you get here you have connected to the WiFi
   Serial.println("connected...yeey :)");
@@ -192,32 +189,25 @@ void setup() {
 
   String port = mqtt_port;
   client.setServer(mqtt_server, port.toInt());
-  client.setCallback(callback);
   
   while (!client.connected()) {
     Serial.println("Connecting to MQTT...");
- 
-    if (client.connect("ESP8266Client")) {
- 
+    if (client.connect(chipid)) {
       Serial.println("connected");  
-      client.subscribe("test");
- 
     } else {
- 
       Serial.print("failed with state ");
       Serial.print(client.state());
-      delay(2000);
- 
+      delay(2000); 
     }
   }
 }
 
 void loop() {
   // put your main code here, to run repeatedly:
-
+  server.handleClient(); 
   if (!client.connected()) {
       Serial.println("Reconnecting");
-      if(client.connect("ESP8266Client")) {
+      if(client.connect(chipid)) {
          Serial.println("Reconnected");
       } else {
          Serial.println("Not reconnecting");
