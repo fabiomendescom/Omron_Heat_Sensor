@@ -4,14 +4,14 @@ Details about the sensor: https://omronfs.omron.com/en_US/ecb/products/pdf/en_D6
 
 ## Hookup
 
-| 3.3v-5v       | ESP8266      | Omron       |
-| ------------- |---------------|-------------| 
-| OUT+          |               | Red (VCC)   |
-| OUT-          |               | Black (GND) |
-| D1            |               | Yellow (SCL)|
-| D2            |               | Blue (SDA)  |
-| IN+           | 3v3           |             | 
-| IN-           | GND           |             |
+| 3.3v-5v Step up | ESP8266      | Omron       |
+| --------------- |---------------|-------------| 
+| OUT+            |               | Red (VCC)   |
+| OUT-            |               | Black (GND) |
+| D1              |               | Yellow (SCL)|
+| D2              |               | Blue (SDA)  |
+| IN+             | 3v3           |             | 
+| IN-             | GND           |             |
 
 Note: Pull up 10K resistors on D1,D2 to VCC
 
